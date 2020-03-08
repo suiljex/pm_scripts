@@ -1,7 +1,7 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash
 
-PMEXECUTABLE="$(realpath $0)"
-PMROOTDIR="$(realpath $(dirname $0))"
+PMEXECUTABLE="$(realpath "$0")"
+PMROOTDIR="$(realpath "$(dirname "$0")")"
 PMDBDIR=".pm_db"
 PROJINFO="projects.info"
 DBID="db.id"
@@ -144,7 +144,7 @@ add_project()
   
   PROJNAME=$1
   PROJLOCATION=$(realpath --relative-to="${PMROOTDIR}" "$2")
-  check_name ${PROJNAME}
+  check_name "${PROJNAME}"
   RESULT=$?
   if [ ${RESULT} -eq 1 ]
   then
@@ -152,7 +152,7 @@ add_project()
     return 1
   fi
   
-  check_path ${PROJLOCATION}
+  check_path "${PROJLOCATION}"
   RESULT=$?
   if [ ${RESULT} -eq 1 ]
   then
@@ -347,7 +347,7 @@ export_project()
     report_message "ERROR: Проекта с таким именем нет в хранилище!"
     return 1
   fi
-  ${CP} ${LASTCOPY} "${PMROOTDIR}"
+  ${CP} "${LASTCOPY}" "${PMROOTDIR}"
 }
 
 export_db()
@@ -498,14 +498,14 @@ print_debug()
     return 1
   fi
   
-  echo "Параметры " $0
-  echo "verbose:     " ${VERBOSE}
-  echo "yes:         " ${YES}
-  echo "skip-clear:  " ${SKIPPMCS}
-  echo "skip-similar:" ${SKIPSIMILAR}
-  echo "alias:       " ${ALIAS}
-  echo "path:        " ${LOCATION}
-  echo "COMMAND:     " ${COMMAND}
+  echo "Параметры " "$0"
+  echo "verbose:     " "${VERBOSE}"
+  echo "yes:         " "${YES}"
+  echo "skip-clear:  " "${SKIPPMCS}"
+  echo "skip-similar:" "${SKIPSIMILAR}"
+  echo "alias:       " "${ALIAS}"
+  echo "path:        " "${LOCATION}"
+  echo "COMMAND:     " "${COMMAND}"
 }
 
 parse_command()
@@ -727,7 +727,7 @@ execute_comand()
         report_message "WARN: В качестве названия будет использовано: \"${ALIAS}\""
       fi
       
-      add_project ${ALIAS} ${LOCATION}
+      add_project "${ALIAS}" "${LOCATION}"
       return $?
       ;;
     delete)
@@ -737,7 +737,7 @@ execute_comand()
         return 1
       fi
       
-      del_project ${ALIAS}
+      del_project "${ALIAS}"
       return $?
       ;;
     save)
@@ -747,7 +747,7 @@ execute_comand()
         return 1
       fi
       
-      save_project ${ALIAS}
+      save_project "${ALIAS}"
       return $?
       ;;
     load)
@@ -757,14 +757,14 @@ execute_comand()
         return 1
       fi
       
-      load_project ${ALIAS}
+      load_project "${ALIAS}"
       return $?
       ;;
     save-all)
       PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
       for PNAME in ${PROJECTNAMES}
       do
-        save_project ${PNAME}
+        save_project "${PNAME}"
       done
       return 0
       ;;
@@ -772,7 +772,7 @@ execute_comand()
       PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
       for PNAME in ${PROJECTNAMES}
       do
-        load_project ${PNAME}
+        load_project "${PNAME}"
       done
       return 0
       ;;
@@ -782,7 +782,7 @@ execute_comand()
         report_message "ERROR: Не указано название проекта"
         return 1
       fi
-      export_project ${ALIAS}
+      export_project "${ALIAS}"
       return $?
       ;;
     export-db)
@@ -796,7 +796,7 @@ execute_comand()
         return 1
       fi
       
-      import_db ${LOCATION}
+      import_db "${LOCATION}"
       return $?
       ;;
     merge-db)
@@ -806,7 +806,7 @@ execute_comand()
         return 1
       fi
       
-      merge_db ${LOCATION}
+      merge_db "${LOCATION}"
       return $?
       ;;
     show)
@@ -816,14 +816,14 @@ execute_comand()
         return 1
       fi
       
-      show_project ${ALIAS}
+      show_project "${ALIAS}"
       return $?
       ;;
     show-all)
       PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
       for PNAME in ${PROJECTNAMES}
       do
-        show_project ${PNAME}
+        show_project "${PNAME}"
       done
       return 0
       ;;

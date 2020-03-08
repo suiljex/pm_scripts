@@ -1,4 +1,4 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash
 
 PMCEXECUTABLE="$(realpath $0)"
 PMCROOTDIR="$(realpath $(dirname $0))"
