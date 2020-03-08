@@ -2,11 +2,12 @@
 
 PMEXECUTABLE="$(realpath $0)"
 PMROOTDIR="$(realpath $(dirname $0))"
-PMDBDIR="pm_db"
+PMDBDIR=".pm_db"
 PROJINFO="projects.info"
 DBID="db.id"
 
 MD="mkdir --parents"
+CF="touch"
 RM="rm -rf"
 CP="cp -r"
 MV="mv"
@@ -71,6 +72,16 @@ check_path()
   return 0
 }
 
+check_pm_db()
+{
+  if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
+  then
+    return 0
+  fi
+  
+  return 1
+}
+
 init_pm_db()
 {
   if [ ${VERBOSE} -ge 1 ]
@@ -78,9 +89,25 @@ init_pm_db()
     echo "Инициализация хранилища"
   fi
   
+  if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
+  then
+    IDCUR=$(cat "${PMROOTDIR}/${PMDBDIR}/${DBID}")
+    report_message "WARN: Уже имеется активное хранилище ${IDCUR}"
+    confirm_choice "WARN: Переинициализировать хранилище?"
+    RESULT=$?
+    if [ ${RESULT} -ne 0 ]
+    then
+      report_message "WARN: Отмена!"
+      return 1
+    else
+      ${RM} "${PMROOTDIR}/${PMDBDIR}"
+    fi
+  fi
+  
   ${MD} "${PMROOTDIR}/${PMDBDIR}"
   NEWID=$(eval ${GEN32CHAR})
   echo ${NEWID} > "${PMROOTDIR}/${PMDBDIR}/${DBID}"
+  ${CF} "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
 }
 
 add_project()
@@ -94,7 +121,7 @@ add_project()
   PROJLOCATION=$(realpath --relative-to="${PMROOTDIR}" "$2")
   check_name ${PROJNAME}
   RESULT=$?
-  if [ ${RESULT} -e 1 ]
+  if [ ${RESULT} -eq 1 ]
   then
     report_message "ERROR: Проект с таким именем уже существует!"
     return 1
@@ -102,11 +129,11 @@ add_project()
   
   check_path ${PROJLOCATION}
   RESULT=$?
-  if [ ${RESULT} -e 1 ]
+  if [ ${RESULT} -eq 1 ]
   then
     report_message "ERROR: Проект с таким путем уже существует!"
     return 1
-  elif [ ${RESULT} -e 2 ]
+  elif [ ${RESULT} -eq 2 ]
   then
     report_message "ERROR: Директория $2 не существует!"
     return 1
@@ -202,7 +229,7 @@ load_project()
   if [ -d "${PROJLOCATION}" ]
   then 
     report_message "WARN: Проект с таким именем уже развернут!"
-    confirm_choice "Заменить текущий развернутый проект на версию из хранилища?"
+    confirm_choice "WARN: Заменить текущий развернутый проект на версию из хранилища?"
     RESULT=$?
     if [ ${RESULT} -ne 0 ]
     then
@@ -242,7 +269,6 @@ export_project()
     report_message "ERROR: Проекта с таким именем нет в хранилище!"
     return 1
   fi
-  echo $LASTCOPY
   ${CP} ${LASTCOPY} "${PMROOTDIR}"
 }
 
@@ -253,7 +279,7 @@ export_db()
     echo "Экспорт хранилища."
   fi
   
-  TARNAME="pm_db_$(eval ${TIMESTAMP})"
+  TARNAME="projectmanagerdb_$(eval ${TIMESTAMP})"
   tar cf "${TARNAME}.tar" --directory "${PMROOTDIR}" "$(basename "${PMROOTDIR}/${PMDBDIR}")"
 }
 
@@ -283,7 +309,7 @@ import_db()
   then
     IDCUR=$(cat "${PMROOTDIR}/${PMDBDIR}/${DBID}")
     report_message "WARN: Уже имеется активное хранилище ${IDCUR}"
-    confirm_choice "Заменить текущее хранилище импортируемым?"
+    confirm_choice "WARN: Заменить текущее хранилище импортируемым?"
     RESULT=$?
     if [ ${RESULT} -ne 0 ]
     then
@@ -302,6 +328,7 @@ show_help()
   printf "Менежджер проектов $0\n"
   printf "Использование:\n"
   printf "\t$0 [-h]\n"
+  printf "\t$0 --init\n"
   printf "\t$0 -a -p <путь к проекту> [-n <название проекта>]\n"
   printf "\t$0 -d -n <название проекта>\n"
   printf "\t$0 -s -n <название проекта>\n"
@@ -311,6 +338,7 @@ show_help()
   printf "\t$0 --load-all\n"
   printf "\t$0 --export-db\n"
   printf "\t$0 --import-db\n"
+  printf "\t\t--init - Инициализация хранилища\n"
   printf "\t\t-a, --add - Добавить проект в хранилище\n"
   printf "\t\t-d, --delete - Удалить проект из хранилища\n"
   printf "\t\t-s, --save - Добавить текущую версию проекта в хранилище\n"
@@ -359,6 +387,15 @@ parse_command()
       -h|-\?|--help)
         show_help    # Display a usage synopsis.
         exit 0
+        ;;
+      --init)         # Handle the case of an empty --file=
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="init"
+        else
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
+        fi
         ;;
       -p|--path)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
@@ -497,6 +534,10 @@ parse_command()
 execute_comand()
 {
   case ${COMMAND} in
+    init)
+      init_pm_db
+      return $?
+      ;;
     add)
       if [ "${LOCATION}" == "" ]
       then
@@ -597,6 +638,14 @@ then
 fi
 
 print_debug
+check_pm_db
+RESULT=$?
+if [ ${RESULT} -ne 0 ] && [ ! "${COMMAND}" == "init" ]
+then
+  report_message "ERROR: Хранилище не инициализировано или повреждено!"
+  exit 1
+fi
+
 execute_comand
 
 exit $?
