@@ -479,105 +479,97 @@ parse_command()
 
 execute_comand()
 {
-  #LOCATION=""
-  #ALIAS=""
-  #COMMAND=""
-  #YES=0
-  #VERBOSE=0
-  
-  if [ "${COMMAND}" == "" ]
-  then
-    echo "Не указана команда"
-    return 1
-  elif [ "${COMMAND}" == "add" ]
-  then 
-    if [ "${LOCATION}" == "" ]
-    then
-      echo "Не указан путь к проеку"
-      return 1
-    fi
-    
-    if [ "${ALIAS}" == "" ]
-    then
-      ALIAS="$(basename "${LOCATION}")"
-      echo "Не указано название проекта"
-      echo "В качестве названия будет использовано: \"${ALIAS}\""
-    fi
-    
-    add_project ${ALIAS} ${LOCATION}
-    return $?
-    
-  elif [ "${COMMAND}" == "delete" ]
-  then
-    if [ "${ALIAS}" == "" ]
-    then
-      echo "Не указано название проекта"
-      return 1
-    fi
-    
-    del_project ${ALIAS}
-    return $?
-    
-  elif [ "${COMMAND}" == "save" ]
-  then
-    if [ "${ALIAS}" == "" ]
-    then
-      echo "Не указано название проекта"
-      return 1
-    fi
-    
-    save_project ${ALIAS}
-    return $?
-  elif [ "${COMMAND}" == "load" ]
-  then
-    if [ "${ALIAS}" == "" ]
-    then
-      echo "Не указано название проекта"
-      return 1
-    fi
-    
-    load_project ${ALIAS}
-    return $?
-  elif [ "${COMMAND}" == "save-all" ]
-  then
-    PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
-    for PNAME in ${PROJECTNAMES}
-    do
-      save_project ${PNAME}
-    done
-    return 0
-  elif [ "${COMMAND}" == "load-all" ]
-  then
-    PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
-    for PNAME in ${PROJECTNAMES}
-    do
-      load_project ${PNAME}
-    done
-    return 0
-  elif [ "${COMMAND}" == "export" ]
-  then
-    if [ "${ALIAS}" == "" ]
-    then
-      echo "Не указано название проекта"
-      return 1
-    fi
-    export_project ${ALIAS}
-    return $?
-  elif [ "${COMMAND}" == "export-db" ]
-  then
-    export_db
-    return $?
-  elif [ "${COMMAND}" == "import-db" ]
-  then
-    if [ "${LOCATION}" == "" ]
-    then
-      echo "Не указан путь к импортируемому хранилищу"
-      return 1
-    fi
-    
-    import_db ${LOCATION}
-    return $?
-  fi
+  case ${COMMAND} in
+          add)
+                if [ "${LOCATION}" == "" ]
+                then
+                  echo "Не указан путь к проеку"
+                  return 1
+                fi
+                
+                if [ "${ALIAS}" == "" ]
+                then
+                  ALIAS="$(basename "${LOCATION}")"
+                  echo "Не указано название проекта"
+                  echo "В качестве названия будет использовано: \"${ALIAS}\""
+                fi
+                
+                add_project ${ALIAS} ${LOCATION}
+                return $?
+              ;;
+          delete)
+                if [ "${ALIAS}" == "" ]
+                then
+                  echo "Не указано название проекта"
+                  return 1
+                fi
+                
+                del_project ${ALIAS}
+                return $?
+              ;;
+          save)
+                if [ "${ALIAS}" == "" ]
+                then
+                  echo "Не указано название проекта"
+                  return 1
+                fi
+                
+                save_project ${ALIAS}
+                return $?
+              ;;
+          load)
+                if [ "${ALIAS}" == "" ]
+                then
+                  echo "Не указано название проекта"
+                  return 1
+                fi
+                
+                load_project ${ALIAS}
+                return $?
+              ;;
+          save-all)
+                PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
+                for PNAME in ${PROJECTNAMES}
+                do
+                  save_project ${PNAME}
+                done
+                return 0
+              ;;
+          load-all)
+                PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
+                for PNAME in ${PROJECTNAMES}
+                do
+                  load_project ${PNAME}
+                done
+                return 0
+              ;;
+          export)
+                if [ "${ALIAS}" == "" ]
+                then
+                  echo "Не указано название проекта"
+                  return 1
+                fi
+                export_project ${ALIAS}
+                return $?
+              ;;
+          export-db)
+                export_db
+                return $?
+              ;;
+          import-db)
+                if [ "${LOCATION}" == "" ]
+                then
+                  echo "Не указан путь к импортируемому хранилищу"
+                  return 1
+                fi
+                
+                import_db ${LOCATION}
+                return $?
+              ;;
+          *)
+                echo "Не указана команда"
+                return 1
+  esac
 }
 
 parse_command "$@"
