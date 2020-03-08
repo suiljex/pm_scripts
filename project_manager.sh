@@ -37,6 +37,11 @@ confirm_choice()
   return 1
 }
 
+report_message()
+{
+  printf '%s\n' "$1" >&2
+}
+
 check_name()
 {
   cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -w "$1"
@@ -81,7 +86,7 @@ add_project()
   RESULT=$?
   if [ ${RESULT} -e 1 ]
   then
-    echo "Проект с таким именем уже существует!"
+    report_message "ERROR: Проект с таким именем уже существует!"
     return 1
   fi
   
@@ -89,11 +94,11 @@ add_project()
   RESULT=$?
   if [ ${RESULT} -e 1 ]
   then
-    echo "Проект с таким путем уже существует!"
+    report_message "ERROR: Проект с таким путем уже существует!"
     return 1
   elif [ ${RESULT} -e 2 ]
   then
-    echo "Директория $2 не существует!"
+    report_message "ERROR: Директория $2 не существует!"
     return 1
   fi
 
@@ -108,7 +113,7 @@ del_project()
   LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
   if [ "${LINENUM}" == "" ]
   then
-    echo "Проекта с таким именем не существует!"
+    report_message "ERROR: Проекта с таким именем не существует!"
     return 1
   fi
   
@@ -123,7 +128,7 @@ save_project()
   LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
   if [ "${LINENUM}" == "" ]
   then
-    echo "Проекта с таким именем не существует!"
+    report_message "ERROR: Проекта с таким именем не существует!"
     return 1
   fi
   
@@ -131,7 +136,7 @@ save_project()
   PROJLOCATION="${PMROOTDIR}/${PROJLOCATION}"
   if [ ! -d "${PROJLOCATION}" ]
   then
-    echo "Директория ${PROJLOCATION} не существует!"
+    report_message "ERROR: Директория ${PROJLOCATION} не существует!"
     return 1
   fi
   
@@ -152,7 +157,7 @@ load_project()
   LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
   if [ "${LINENUM}" == "" ]
   then
-    echo "Проекта с таким именем не существует!"
+    report_message "ERROR: Проекта с таким именем не существует!"
     return 1
   fi
   
@@ -165,18 +170,18 @@ load_project()
   
   if [ "${LASTCOPY}" == "" ]
   then
-    echo "В хранилище нет версий проекта с таким именем!"
+    report_message "ERROR: В хранилище нет версий проекта с таким именем!"
     return 1
   fi
   
   if [ -d "${PROJLOCATION}" ]
   then 
-    echo "Проект с таким именем уже развернут!"
+    report_message "WARN: Проект с таким именем уже развернут!"
     confirm_choice "Заменить текущий развернутый проект на версию из хранилища?"
     RESULT=$?
     if [ ${RESULT} -ne 0 ]
     then
-      echo "Останов!"
+      report_message "WARN: Отмена!"
       return 1
     else
       ${RM} "${PROJLOCATION}"
@@ -197,14 +202,14 @@ export_project()
   LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
   if [ "${LINENUM}" == "" ]
   then
-    echo "Проекта с таким именем не существует!"
+    report_message "ERROR: Проекта с таким именем не существует!"
     return 1
   fi
   
   LASTCOPY="${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/$(ls "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/" | sort | tail --lines=1)"
   if [ "${LASTCOPY}" == "" ]
   then
-    echo "Проекта с таким именем нет в хранилище!"
+    report_message "ERROR: Проекта с таким именем нет в хранилище!"
     return 1
   fi
   echo $LASTCOPY
@@ -226,7 +231,7 @@ import_db()
   RESULT=$?
   if [ ${RESULT} -ne 0 ]
   then
-    echo "Неверный формат"
+    report_message "ERROR: Неверный формат"
     return 1
   fi
   
@@ -235,12 +240,12 @@ import_db()
   if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
   then
     IDCUR=$(cat "${PMROOTDIR}/${PMDBDIR}/${DBID}")
-    echo "Уже имеется активное хранилище ${IDCUR}"
+    report_message "WARN: Уже имеется активное хранилище ${IDCUR}"
     confirm_choice "Заменить текущее хранилище импортируемым?"
     RESULT=$?
     if [ ${RESULT} -ne 0 ]
     then
-      echo "Останов!"
+      report_message "WARN: Отмена!"
       return 1
     else
       ${RM} "${PMROOTDIR}/${PMDBDIR}"
@@ -325,35 +330,40 @@ parse_command()
           LOCATION=$2
           shift
         else
-          die 'ERROR: "--path" requires a non-empty option argument.'
+          report_message "ERROR: \"--path\" requires a non-empty option argument."
+          return 1
         fi
         ;;
       --path=?*)
         LOCATION=${1#*=} # Delete everything up to "=" and assign the remainder.
         ;;
       --path=)         # Handle the case of an empty --file=
-        die 'ERROR: "--path" requires a non-empty option argument.'
+        report_message "ERROR: \"--path\" requires a non-empty option argument."
+        return 1
         ;;
       -n|--alias)       # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
           ALIAS=$2
           shift
         else
-          die 'ERROR: "--alias" requires a non-empty option argument.'
+          report_message "ERROR: \"--alias\" requires a non-empty option argument."
+          return 1
         fi
         ;;
       --alias=?*)
         ALIAS=${1#*=} # Delete everything up to "=" and assign the remainder.
         ;;
       --alias=)         # Handle the case of an empty --file=
-        die 'ERROR: "--alias" requires a non-empty option argument.'
+        report_message "ERROR: \"--alias\" requires a non-empty option argument."
+        return 1
         ;;
       -a|--add)       # Takes an option argument;
         if [ "${COMMAND}" == "" ]
         then
           COMMAND="add"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       -d|--delete)       # Takes an option argument;
@@ -361,7 +371,8 @@ parse_command()
         then
           COMMAND="delete"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       -s|--save)       # Takes an option argument;
@@ -369,7 +380,8 @@ parse_command()
         then
           COMMAND="save"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       -l|--load)       # Takes an option argument;
@@ -377,7 +389,8 @@ parse_command()
         then
           COMMAND="load"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       --save-all)       # Takes an option argument;
@@ -385,7 +398,8 @@ parse_command()
         then
           COMMAND="save-all"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       --load-all)       # Takes an option argument;
@@ -393,7 +407,8 @@ parse_command()
         then
           COMMAND="load-all"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       -e|--export)       # Takes an option argument;
@@ -401,7 +416,8 @@ parse_command()
         then
           COMMAND="export"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       --export-db)       # Takes an option argument;
@@ -409,7 +425,8 @@ parse_command()
         then
           COMMAND="export-db"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       --import-db)       # Takes an option argument;
@@ -417,21 +434,22 @@ parse_command()
         then
           COMMAND="import-db"
         else
-          die "ERROR: Разрешено только одно действие за раз!"
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
         fi
         ;;
       -y|--yes)       # Takes an option argument;
         YES=1
         ;;
       -v|--verbose)
-        VERBOSE=$((verbose + 1))  # Each -v adds 1 to verbosity.
+        VERBOSE=$((VERBOSE + 1))  # Each -v adds 1 to verbosity.
         ;;
       --)              # End of all options.
         shift
         break
         ;;
       -?*)
-        printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+        printf "WARN: Unknown option (ignored): %s\n" "$1" >&2
         ;;
       *)               # Default case: No more options, so break out of the loop.
         break
@@ -447,15 +465,15 @@ execute_comand()
     add)
       if [ "${LOCATION}" == "" ]
       then
-        echo "Не указан путь к проеку"
+        report_message "ERROR: Не указан путь к проеку"
         return 1
       fi
       
       if [ "${ALIAS}" == "" ]
       then
         ALIAS="$(basename "${LOCATION}")"
-        echo "Не указано название проекта"
-        echo "В качестве названия будет использовано: \"${ALIAS}\""
+        report_message "WARN: Не указано название проекта"
+        report_message "WARN: В качестве названия будет использовано: \"${ALIAS}\""
       fi
       
       add_project ${ALIAS} ${LOCATION}
@@ -464,7 +482,7 @@ execute_comand()
     delete)
       if [ "${ALIAS}" == "" ]
       then
-        echo "Не указано название проекта"
+        report_message "ERROR: Не указано название проекта"
         return 1
       fi
       
@@ -474,7 +492,7 @@ execute_comand()
     save)
       if [ "${ALIAS}" == "" ]
       then
-        echo "Не указано название проекта"
+        report_message "ERROR: Не указано название проекта"
         return 1
       fi
       
@@ -484,7 +502,7 @@ execute_comand()
     load)
       if [ "${ALIAS}" == "" ]
       then
-        echo "Не указано название проекта"
+        report_message "ERROR: Не указано название проекта"
         return 1
       fi
       
@@ -510,7 +528,7 @@ execute_comand()
     export)
       if [ "${ALIAS}" == "" ]
       then
-        echo "Не указано название проекта"
+        report_message "ERROR: Не указано название проекта"
         return 1
       fi
       export_project ${ALIAS}
@@ -523,7 +541,7 @@ execute_comand()
     import-db)
       if [ "${LOCATION}" == "" ]
       then
-        echo "Не указан путь к импортируемому хранилищу"
+        report_message "ERROR: Не указан путь к импортируемому хранилищу"
         return 1
       fi
       
@@ -531,12 +549,18 @@ execute_comand()
       return $?
       ;;
     *)
-      echo "Не указана команда"
+      report_message "ERROR: Не указана команда"
       return 1
   esac
 }
 
 parse_command "$@"
+RESULT=$?
+if [ ${RESULT} -ne 0 ]
+then
+  exit ${RESULT}
+fi
+
 print_debug
 execute_comand
 
