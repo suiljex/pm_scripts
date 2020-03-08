@@ -73,6 +73,11 @@ check_path()
 
 init_pm_db()
 {
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Инициализация хранилища"
+  fi
+  
   ${MD} "${PMROOTDIR}/${PMDBDIR}"
   NEWID=$(eval ${GEN32CHAR})
   echo ${NEWID} > "${PMROOTDIR}/${PMDBDIR}/${DBID}"
@@ -80,6 +85,11 @@ init_pm_db()
 
 add_project()
 {
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Добавление проекта:" $1 $2
+  fi
+  
   PROJNAME=$1
   PROJLOCATION=$(realpath --relative-to="${PMROOTDIR}" "$2")
   check_name ${PROJNAME}
@@ -108,6 +118,11 @@ add_project()
 
 del_project()
 {
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Удаление проекта:" $1
+  fi
+  
   PROJNAME=$1
 
   LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
@@ -123,6 +138,11 @@ del_project()
 
 save_project()
 {
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Сохранение проекта:" $1
+  fi
+  
   PROJNAME=$1
 
   LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
@@ -152,6 +172,11 @@ save_project()
 
 load_project()
 {
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Развертывание проекта:" $1
+  fi
+  
   PROJNAME=$1
   
   LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
@@ -197,6 +222,11 @@ load_project()
 
 export_project()
 {
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Экспорт проекта:" $1
+  fi
+  
   PROJNAME=$1
   
   LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
@@ -218,12 +248,22 @@ export_project()
 
 export_db()
 {
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Экспорт хранилища."
+  fi
+  
   TARNAME="pm_db_$(eval ${TIMESTAMP})"
   tar cf "${TARNAME}.tar" --directory "${PMROOTDIR}" "$(basename "${PMROOTDIR}/${PMDBDIR}")"
 }
 
 import_db()
 {
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Импорт хранилища."
+  fi
+  
   TARNAME=$1
   TEMPDIR="/tmp/${PMROOTDIR}_$(eval ${GEN32CHAR})"
   ${MD} "${TEMPDIR}"
@@ -231,11 +271,13 @@ import_db()
   RESULT=$?
   if [ ${RESULT} -ne 0 ]
   then
+    ${RM} "${TEMPDIR}"
     report_message "ERROR: Неверный формат"
     return 1
   fi
   
   IDIMPORT=$(cat "${TEMPDIR}/${PMDBDIR}/${DBID}")
+  ${RM} "${TEMPDIR}"
   echo "Импортируется хранилище        ${IDIMPORT}"
   if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
   then
@@ -253,13 +295,6 @@ import_db()
   fi
   
   tar xf "${TARNAME}" --directory "${PMROOTDIR}"
-  
-  ${RM} "${TEMPDIR}"
-}
-
-die() {
-  printf '%s\n' "$1" >&2
-  exit 1
 }
 
 show_help()
@@ -292,7 +327,7 @@ show_help()
 
 print_debug()
 {
-  if [ ${VERBOSE} -eq 0 ]
+  if [ ${VERBOSE} -lt 2 ]
   then
     return 1
   fi
