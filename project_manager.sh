@@ -140,12 +140,9 @@ save_project()
   ${CP} "${PROJLOCATION}" "${TEMPDIR}"
   #TODO call clear script
   TARNAME="${PROJNAME}_$(eval ${TIMESTAMP})"
-  #echo ${TEMPDIR}/$(basename "${PROJLOCATION}")
-  #echo "${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.gz"
   ${MD} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"
   tar cfz "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.gz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
   ${RM} "${TEMPDIR}"
-  #echo $TEMPDIR
 }
 
 load_project()
@@ -186,26 +183,11 @@ load_project()
     fi
   fi
   
-  #echo $LASTCOPY
   TEMPDIR="/tmp/${PROJNAME}_$(eval ${GEN32CHAR})"
   ${MD} "${TEMPDIR}"
   tar xfz "${LASTCOPY}" --directory "${TEMPDIR}"
-  #ls  "${TEMPDIR}" | sort
-  #ls  "${PROJLOCATION}" | sort
   ${MV} "${TEMPDIR}/$(basename "${PROJLOCATION}")" "$(dirname "${PROJLOCATION}")"
-  #ls  "${PROJLOCATION}" | sort
-  #echo $(basename "${PROJLOCATION}")
-  #echo $(dirname "${PROJLOCATION}")
-  
-  #${CP} "${PROJLOCATION}" "${TEMPDIR}"
-  #TODO call clear script
-  #TARNAME="${PROJNAME}_$(eval ${TIMESTAMP})"
-  #echo ${TEMPDIR}/$(basename "${PROJLOCATION}")
-  #echo "${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.gz"
-  #${MD} "${PMDBDIR}/${PROJNAME}"
-  #tar cfz "${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.gz" -C "${TEMPDIR}" "$(basename "${PROJLOCATION}")" 2> ${VOID}
   ${RM} "${TEMPDIR}"
-  #echo $TEMPDIR
 }
 
 export_project()
@@ -226,25 +208,7 @@ export_project()
     return 1
   fi
   echo $LASTCOPY
-  #TEMPDIR="/tmp/${PROJNAME}_$(eval ${GEN32CHAR})"
-  #${MD} "${TEMPDIR}"
-  #tar xfz "${LASTCOPY}" --directory "${TEMPDIR}"
-  #ls  "${TEMPDIR}" | sort
-  #ls  "${PROJLOCATION}" | sort
   ${CP} ${LASTCOPY} "${PMROOTDIR}"
-  #ls  "${PROJLOCATION}" | sort
-  #echo $(basename "${PROJLOCATION}")
-  #echo $(dirname "${PROJLOCATION}")
-  
-  #${CP} "${PROJLOCATION}" "${TEMPDIR}"
-  #TODO call clear script
-  #TARNAME="${PROJNAME}_$(eval ${TIMESTAMP})"
-  #echo ${TEMPDIR}/$(basename "${PROJLOCATION}")
-  #echo "${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.gz"
-  #${MD} "${PMDBDIR}/${PROJNAME}"
-  #tar cfz "${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.gz" -C "${TEMPDIR}" "$(basename "${PROJLOCATION}")" 2> ${VOID}
-  #${RM} "${TEMPDIR}"
-  #echo $TEMPDIR
 }
 
 export_db()
@@ -352,125 +316,125 @@ parse_command()
   
   while :; do
     case $1 in
-        -h|-\?|--help)
-            show_help    # Display a usage synopsis.
-            exit 0
-            ;;
-        -p|--path)       # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-              LOCATION=$2
-              shift
-            else
-              die 'ERROR: "--path" requires a non-empty option argument.'
-            fi
-            ;;
-        --path=?*)
-            LOCATION=${1#*=} # Delete everything up to "=" and assign the remainder.
-            ;;
-        --path=)         # Handle the case of an empty --file=
-            die 'ERROR: "--path" requires a non-empty option argument.'
-            ;;
-        -n|--alias)       # Takes an option argument; ensure it has been specified.
-            if [ "$2" ]; then
-              ALIAS=$2
-              shift
-            else
-              die 'ERROR: "--alias" requires a non-empty option argument.'
-            fi
-            ;;
-        --alias=?*)
-            ALIAS=${1#*=} # Delete everything up to "=" and assign the remainder.
-            ;;
-        --alias=)         # Handle the case of an empty --file=
-            die 'ERROR: "--alias" requires a non-empty option argument.'
-            ;;
-        -a|--add)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="add"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        -d|--delete)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="delete"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        -s|--save)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="save"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        -l|--load)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="load"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        --save-all)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="save-all"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        --load-all)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="load-all"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        -e|--export)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="export"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        --export-db)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="export-db"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        --import-db)       # Takes an option argument;
-            if [ "${COMMAND}" == "" ]
-            then
-              COMMAND="import-db"
-            else
-              die "ERROR: Разрешено только одно действие за раз!"
-            fi
-            ;;
-        -y|--yes)       # Takes an option argument;
-            YES=1
-            ;;
-        -v|--verbose)
-            VERBOSE=$((verbose + 1))  # Each -v adds 1 to verbosity.
-            ;;
-        --)              # End of all options.
-            shift
-            break
-            ;;
-        -?*)
-            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
-            ;;
-        *)               # Default case: No more options, so break out of the loop.
-            break
+      -h|-\?|--help)
+        show_help    # Display a usage synopsis.
+        exit 0
+        ;;
+      -p|--path)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+          LOCATION=$2
+          shift
+        else
+          die 'ERROR: "--path" requires a non-empty option argument.'
+        fi
+        ;;
+      --path=?*)
+        LOCATION=${1#*=} # Delete everything up to "=" and assign the remainder.
+        ;;
+      --path=)         # Handle the case of an empty --file=
+        die 'ERROR: "--path" requires a non-empty option argument.'
+        ;;
+      -n|--alias)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+          ALIAS=$2
+          shift
+        else
+          die 'ERROR: "--alias" requires a non-empty option argument.'
+        fi
+        ;;
+      --alias=?*)
+        ALIAS=${1#*=} # Delete everything up to "=" and assign the remainder.
+        ;;
+      --alias=)         # Handle the case of an empty --file=
+        die 'ERROR: "--alias" requires a non-empty option argument.'
+        ;;
+      -a|--add)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="add"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      -d|--delete)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="delete"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      -s|--save)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="save"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      -l|--load)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="load"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      --save-all)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="save-all"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      --load-all)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="load-all"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      -e|--export)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="export"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      --export-db)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="export-db"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      --import-db)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="import-db"
+        else
+          die "ERROR: Разрешено только одно действие за раз!"
+        fi
+        ;;
+      -y|--yes)       # Takes an option argument;
+        YES=1
+        ;;
+      -v|--verbose)
+        VERBOSE=$((verbose + 1))  # Each -v adds 1 to verbosity.
+        ;;
+      --)              # End of all options.
+        shift
+        break
+        ;;
+      -?*)
+        printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+        ;;
+      *)               # Default case: No more options, so break out of the loop.
+        break
     esac
 
     shift
@@ -480,95 +444,95 @@ parse_command()
 execute_comand()
 {
   case ${COMMAND} in
-          add)
-                if [ "${LOCATION}" == "" ]
-                then
-                  echo "Не указан путь к проеку"
-                  return 1
-                fi
-                
-                if [ "${ALIAS}" == "" ]
-                then
-                  ALIAS="$(basename "${LOCATION}")"
-                  echo "Не указано название проекта"
-                  echo "В качестве названия будет использовано: \"${ALIAS}\""
-                fi
-                
-                add_project ${ALIAS} ${LOCATION}
-                return $?
-              ;;
-          delete)
-                if [ "${ALIAS}" == "" ]
-                then
-                  echo "Не указано название проекта"
-                  return 1
-                fi
-                
-                del_project ${ALIAS}
-                return $?
-              ;;
-          save)
-                if [ "${ALIAS}" == "" ]
-                then
-                  echo "Не указано название проекта"
-                  return 1
-                fi
-                
-                save_project ${ALIAS}
-                return $?
-              ;;
-          load)
-                if [ "${ALIAS}" == "" ]
-                then
-                  echo "Не указано название проекта"
-                  return 1
-                fi
-                
-                load_project ${ALIAS}
-                return $?
-              ;;
-          save-all)
-                PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
-                for PNAME in ${PROJECTNAMES}
-                do
-                  save_project ${PNAME}
-                done
-                return 0
-              ;;
-          load-all)
-                PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
-                for PNAME in ${PROJECTNAMES}
-                do
-                  load_project ${PNAME}
-                done
-                return 0
-              ;;
-          export)
-                if [ "${ALIAS}" == "" ]
-                then
-                  echo "Не указано название проекта"
-                  return 1
-                fi
-                export_project ${ALIAS}
-                return $?
-              ;;
-          export-db)
-                export_db
-                return $?
-              ;;
-          import-db)
-                if [ "${LOCATION}" == "" ]
-                then
-                  echo "Не указан путь к импортируемому хранилищу"
-                  return 1
-                fi
-                
-                import_db ${LOCATION}
-                return $?
-              ;;
-          *)
-                echo "Не указана команда"
-                return 1
+    add)
+      if [ "${LOCATION}" == "" ]
+      then
+        echo "Не указан путь к проеку"
+        return 1
+      fi
+      
+      if [ "${ALIAS}" == "" ]
+      then
+        ALIAS="$(basename "${LOCATION}")"
+        echo "Не указано название проекта"
+        echo "В качестве названия будет использовано: \"${ALIAS}\""
+      fi
+      
+      add_project ${ALIAS} ${LOCATION}
+      return $?
+      ;;
+    delete)
+      if [ "${ALIAS}" == "" ]
+      then
+        echo "Не указано название проекта"
+        return 1
+      fi
+      
+      del_project ${ALIAS}
+      return $?
+      ;;
+    save)
+      if [ "${ALIAS}" == "" ]
+      then
+        echo "Не указано название проекта"
+        return 1
+      fi
+      
+      save_project ${ALIAS}
+      return $?
+      ;;
+    load)
+      if [ "${ALIAS}" == "" ]
+      then
+        echo "Не указано название проекта"
+        return 1
+      fi
+      
+      load_project ${ALIAS}
+      return $?
+      ;;
+    save-all)
+      PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
+      for PNAME in ${PROJECTNAMES}
+      do
+        save_project ${PNAME}
+      done
+      return 0
+      ;;
+    load-all)
+      PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
+      for PNAME in ${PROJECTNAMES}
+      do
+        load_project ${PNAME}
+      done
+      return 0
+      ;;
+    export)
+      if [ "${ALIAS}" == "" ]
+      then
+        echo "Не указано название проекта"
+        return 1
+      fi
+      export_project ${ALIAS}
+      return $?
+      ;;
+    export-db)
+      export_db
+      return $?
+      ;;
+    import-db)
+      if [ "${LOCATION}" == "" ]
+      then
+        echo "Не указан путь к импортируемому хранилищу"
+        return 1
+      fi
+      
+      import_db ${LOCATION}
+      return $?
+      ;;
+    *)
+      echo "Не указана команда"
+      return 1
   esac
 }
 
