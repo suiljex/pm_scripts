@@ -76,12 +76,21 @@ check_path()
 
 check_pm_db()
 {
-  if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
+  if [ ! -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ] || [ ! -f "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" ]
   then
-    return 0
+    return 1
   fi
   
-  return 1
+  CTOTAL=$(sort --unique "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | wc --lines)
+  CNAMES=$(sort --unique "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | cut --delimiter=':' --fields=1 | sort --unique | wc --lines)
+  CLOCATIONS=$(sort --unique "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | cut --delimiter=':' --fields=2 | sort --unique | wc --lines)
+  
+  if ! ( [ ${CTOTAL} -eq ${CNAMES} ] && [ ${CTOTAL} -eq ${CLOCATIONS} ] )
+  then
+    return 1
+  fi
+  
+  return 0
 }
 
 check_merge_conflicts()
