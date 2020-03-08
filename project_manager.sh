@@ -5,6 +5,7 @@ PMROOTDIR="$(realpath $(dirname $0))"
 PMDBDIR=".pm_db"
 PROJINFO="projects.info"
 DBID="db.id"
+PMCS="pm_clean.sh"
 
 MD="mkdir --parents"
 CF="touch"
@@ -190,7 +191,15 @@ save_project()
   TEMPDIR="/tmp/${PROJNAME}_$(eval ${GEN32CHAR})"
   ${MD} "${TEMPDIR}"
   ${CP} "${PROJLOCATION}" "${TEMPDIR}"
-  #TODO call clear script
+  
+  if [ -x "${TEMPDIR}/$(basename "${PROJLOCATION}")/${PMCS}" ] && [ ${SKIPPMCS} -eq 0 ]
+  then
+    eval "${TEMPDIR}/$(basename "${PROJLOCATION}")/${PMCS}"
+  elif [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Пропуск выполнения скрипта отчиски проекта"
+  fi
+  
   TARNAME="${PROJNAME}_$(eval ${TIMESTAMP})"
   ${MD} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"
   tar cfz "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.gz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
@@ -304,7 +313,7 @@ import_db()
   
   IDIMPORT=$(cat "${TEMPDIR}/${PMDBDIR}/${DBID}")
   ${RM} "${TEMPDIR}"
-  echo "Импортируется хранилище        ${IDIMPORT}"
+  echo "Импортируется хранилище              ${IDIMPORT}"
   if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
   then
     IDCUR=$(cat "${PMROOTDIR}/${PMDBDIR}/${DBID}")
@@ -331,10 +340,10 @@ show_help()
   printf "\t$0 --init\n"
   printf "\t$0 -a -p <путь к проекту> [-n <название проекта>]\n"
   printf "\t$0 -d -n <название проекта>\n"
-  printf "\t$0 -s -n <название проекта>\n"
+  printf "\t$0 -s -n <название проекта> [--skip-clear]\n"
   printf "\t$0 -l -n <название проекта>\n"
   printf "\t$0 -e -n <название проекта>\n"
-  printf "\t$0 --save-all\n"
+  printf "\t$0 --save-all [--skip-clear]\n"
   printf "\t$0 --load-all\n"
   printf "\t$0 --export-db\n"
   printf "\t$0 --import-db\n"
@@ -347,6 +356,7 @@ show_help()
   printf "\t\t-p, --path - Указать путь\n"
   printf "\t\t-n, --alias - Указать имя проекта\n"
   printf "\t\t--yes - Соглашаться со всеми запросами\n"
+  printf "\t\t--skip-clear - Пропустить выполнение скрипта отчиски проекта\n"
   printf "\t\t--save-all - Добавить текущие версии всех проектов в хранилище\n"
   printf "\t\t--load-all - Развернуть последние версии проектов из хранилища\n"
   printf "\t\t--export-db - Экспортировать хранилище\n"
@@ -360,12 +370,13 @@ print_debug()
     return 1
   fi
   
-  echo "Параметры" $0
-  echo "verbose: " ${VERBOSE}
-  echo "yes:     " ${YES}
-  echo "alias:   " ${ALIAS}
-  echo "path:    " ${LOCATION}
-  echo "COMMAND: " ${COMMAND}
+  echo "Параметры " $0
+  echo "verbose:  " ${VERBOSE}
+  echo "yes:      " ${YES}
+  echo "skip-clear" ${SKIPPMCS}
+  echo "alias:    " ${ALIAS}
+  echo "path:     " ${LOCATION}
+  echo "COMMAND:  " ${COMMAND}
 }
 
 parse_command()
@@ -381,6 +392,7 @@ parse_command()
   COMMAND=""
   YES=0
   VERBOSE=0
+  SKIPPMCS=0
   
   while :; do
     case $1 in
@@ -512,6 +524,9 @@ parse_command()
         ;;
       -y|--yes)       # Takes an option argument;
         YES=1
+        ;;
+      --skip-clear)       # Takes an option argument;
+        SKIPPMCS=1
         ;;
       -v|--verbose)
         VERBOSE=$((VERBOSE + 1))  # Each -v adds 1 to verbosity.
