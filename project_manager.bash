@@ -12,6 +12,7 @@ CF="touch"
 RM="rm --recursive --force"
 CP="cp --recursive --preserve=mode,ownership,timestamps"
 MV="mv"
+MERGE="rsync --archive --ignore-existing"
 VOID="/dev/null"
 GEN32CHAR="cat /dev/urandom | tr -cd 'a-z0-9' | head -c 32"
 TIMESTAMP="date +%Y.%m.%d-%H.%M.%S"
@@ -76,6 +77,20 @@ check_path()
 check_pm_db()
 {
   if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
+  then
+    return 0
+  fi
+  
+  return 1
+}
+
+check_merge_conflicts()
+{
+  CTOTAL=$(sort --unique "$1" "$2" | wc --lines)
+  CNAMES=$(sort --unique "$1" "$2" | cut --delimiter=':' --fields=1 | sort --unique | wc --lines)
+  CLOCATIONS=$(sort --unique "$1" "$2" | cut --delimiter=':' --fields=2 | sort --unique | wc --lines)
+  
+  if [ ${CTOTAL} -eq ${CNAMES} ] && [ ${CTOTAL} -eq ${CLOCATIONS} ]
   then
     return 0
   fi
@@ -358,7 +373,7 @@ import_db()
   
   IDIMPORT=$(cat "${TEMPDIR}/${PMDBDIR}/${DBID}")
   ${RM} "${TEMPDIR}"
-  echo "Импортируется хранилище              ${IDIMPORT}"
+  printf "Импортируется хранилище              ${IDIMPORT}\n"
   if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
   then
     IDCUR=$(cat "${PMROOTDIR}/${PMDBDIR}/${DBID}")
@@ -377,6 +392,58 @@ import_db()
   tar xf "${TARNAME}" --directory "${PMROOTDIR}"
 }
 
+merge_db()
+{
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Слияние хранилища."
+  fi
+  
+  TARNAME=$1
+  TEMPDIR="/tmp/${PMROOTDIR}_$(eval ${GEN32CHAR})"
+  ${MD} "${TEMPDIR}"
+  tar xf "${TARNAME}" --directory "${TEMPDIR}" "${PMDBDIR}/${DBID}" "${PMDBDIR}/${PROJINFO}" 2> ${VOID}
+  RESULT=$?
+  if [ ${RESULT} -ne 0 ]
+  then
+    ${RM} "${TEMPDIR}"
+    report_message "ERROR: Неверный формат"
+    return 1
+  fi
+  
+  IDMERGE=$(cat "${TEMPDIR}/${PMDBDIR}/${DBID}")
+  IDCUR=$(cat "${PMROOTDIR}/${PMDBDIR}/${DBID}")
+  
+  printf "Сливаемые хранилища:\n"             
+  printf "${IDMERGE}\n"
+  printf "${IDCUR}\n"
+  
+  check_merge_conflicts "${TEMPDIR}/${PMDBDIR}/${PROJINFO}" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
+  RESULT=$?
+  if [ ${RESULT} -ne 0 ]
+  then
+    ${RM} "${TEMPDIR}"
+    report_message "ERROR: Конфликт слияния!"
+    return 1
+  fi
+  
+  confirm_choice
+  RESULT=$?
+  if [ ${RESULT} -ne 0 ]
+  then
+    report_message "WARN: Отмена!"
+    ${RM} "${TEMPDIR}"
+    return 1
+  fi
+  tar xf "${TARNAME}" --directory "${TEMPDIR}"
+  
+  sort --unique "${TEMPDIR}/${PMDBDIR}/${PROJINFO}" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" > "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}.temp"
+  ${MV} "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}.temp" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
+  
+  ${MERGE} "${TEMPDIR}/${PMDBDIR}/" "${PMROOTDIR}/${PMDBDIR}/"
+  ${RM} "${TEMPDIR}"
+}
+
 show_help()
 {
   printf "Менежджер проектов $0\n"
@@ -391,7 +458,8 @@ show_help()
   printf "\t$0 --save-all [--skip-clear] [--skip-similar]\n"
   printf "\t$0 --load-all\n"
   printf "\t$0 --export-db\n"
-  printf "\t$0 --import-db\n"
+  printf "\t$0 --import-db -p <путь к проекту>\n"
+  printf "\t$0 --merge-db -p <путь к проекту>\n"
   printf "\t$0 --show -n <название проекта>\n"
   printf "\t$0 --show-all\n"
   printf "\t\t--init - Инициализация хранилища\n"
@@ -409,6 +477,7 @@ show_help()
   printf "\t\t--load-all - Развернуть последние версии проектов из хранилища\n"
   printf "\t\t--export-db - Экспортировать хранилище\n"
   printf "\t\t--import-db - Импортировать хранилище\n"
+  printf "\t\t--merge-db - Слить хранилище\n"
   printf "\t\t--show - Показать содержимое проекта в хранилище\n"
   printf "\t\t--show-all - Показать содержимое проектов в хранилище\n"
 }
@@ -574,6 +643,15 @@ parse_command()
           return 1
         fi
         ;;
+      --merge-db)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="merge-db"
+        else
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
+        fi
+        ;;
       --show)       # Takes an option argument;
         if [ "${COMMAND}" == "" ]
         then
@@ -712,6 +790,16 @@ execute_comand()
       import_db ${LOCATION}
       return $?
       ;;
+    merge-db)
+      if [ "${LOCATION}" == "" ]
+      then
+        report_message "ERROR: Не указан путь к сливаемому хранилищу"
+        return 1
+      fi
+      
+      merge_db ${LOCATION}
+      return $?
+      ;;
     show)
       if [ "${ALIAS}" == "" ]
       then
@@ -746,7 +834,7 @@ fi
 print_debug
 check_pm_db
 RESULT=$?
-if [ ${RESULT} -ne 0 ] && [ ! "${COMMAND}" == "init" ]
+if [ ${RESULT} -ne 0 ] && [ ! "${COMMAND}" == "init" ] && [ ! "${COMMAND}" == "import-db" ] 
 then
   report_message "ERROR: Хранилище не инициализировано или повреждено!"
   exit 1
