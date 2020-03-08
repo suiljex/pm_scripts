@@ -9,8 +9,8 @@ PMCS="pm_clean.bash"
 
 MD="mkdir --parents"
 CF="touch"
-RM="rm -rf"
-CP="cp -r"
+RM="rm --recursive --force"
+CP="cp --recursive --preserve=mode,ownership,timestamps"
 MV="mv"
 VOID="/dev/null"
 GEN32CHAR="cat /dev/urandom | tr -cd 'a-z0-9' | head -c 32"
@@ -217,6 +217,11 @@ save_project()
     return 1
   fi
   
+  if [ -d "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/" ]
+  then
+    LASTCOPY="${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/$(ls "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/" | sort | tail --lines=1)"
+  fi
+  
   TEMPDIR="/tmp/${PROJNAME}_$(eval ${GEN32CHAR})"
   ${MD} "${TEMPDIR}"
   ${CP} "${PROJLOCATION}" "${TEMPDIR}"
@@ -233,6 +238,17 @@ save_project()
   ${MD} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"
   tar cfJ "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.xz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
   ${RM} "${TEMPDIR}"
+
+  if [ ${SKIPSIMILAR} -eq 1 ] && [ -f "${LASTCOPY}" ]
+  then
+    NEWCOPY="${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/$(ls "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/" | sort | tail --lines=1)"
+    diff ${LASTCOPY} ${NEWCOPY} 1> ${VOID} 2> ${VOID}
+    RESULT=$?
+    if [ ${RESULT} -eq 0 ]
+    then
+      ${RM} "${NEWCOPY}"
+    fi
+  fi
 }
 
 load_project()
@@ -369,10 +385,10 @@ show_help()
   printf "\t$0 --init\n"
   printf "\t$0 -a -p <путь к проекту> [-n <название проекта>]\n"
   printf "\t$0 -d -n <название проекта>\n"
-  printf "\t$0 -s -n <название проекта> [--skip-clear]\n"
+  printf "\t$0 -s -n <название проекта> [--skip-clear] [--skip-similar]\n"
   printf "\t$0 -l -n <название проекта>\n"
   printf "\t$0 -e -n <название проекта>\n"
-  printf "\t$0 --save-all [--skip-clear]\n"
+  printf "\t$0 --save-all [--skip-clear] [--skip-similar]\n"
   printf "\t$0 --load-all\n"
   printf "\t$0 --export-db\n"
   printf "\t$0 --import-db\n"
@@ -388,6 +404,7 @@ show_help()
   printf "\t\t-n, --alias - Указать имя проекта\n"
   printf "\t\t--yes - Соглашаться со всеми запросами\n"
   printf "\t\t--skip-clear - Пропустить выполнение скрипта отчиски проекта\n"
+  printf "\t\t--skip-similar - Не сохранять текущую версию, если она не отличается от предыдущей\n"
   printf "\t\t--save-all - Добавить текущие версии всех проектов в хранилище\n"
   printf "\t\t--load-all - Развернуть последние версии проектов из хранилища\n"
   printf "\t\t--export-db - Экспортировать хранилище\n"
@@ -404,12 +421,13 @@ print_debug()
   fi
   
   echo "Параметры " $0
-  echo "verbose:  " ${VERBOSE}
-  echo "yes:      " ${YES}
-  echo "skip-clear" ${SKIPPMCS}
-  echo "alias:    " ${ALIAS}
-  echo "path:     " ${LOCATION}
-  echo "COMMAND:  " ${COMMAND}
+  echo "verbose:     " ${VERBOSE}
+  echo "yes:         " ${YES}
+  echo "skip-clear:  " ${SKIPPMCS}
+  echo "skip-similar:" ${SKIPSIMILAR}
+  echo "alias:       " ${ALIAS}
+  echo "path:        " ${LOCATION}
+  echo "COMMAND:     " ${COMMAND}
 }
 
 parse_command()
@@ -426,6 +444,7 @@ parse_command()
   YES=0
   VERBOSE=0
   SKIPPMCS=0
+  SKIPSIMILAR=0
   
   while :; do
     case $1 in
@@ -578,6 +597,9 @@ parse_command()
         ;;
       --skip-clear)       # Takes an option argument;
         SKIPPMCS=1
+        ;;
+      --skip-similar)       # Takes an option argument;
+        SKIPSIMILAR=1
         ;;
       -v|--verbose)
         VERBOSE=$((VERBOSE + 1))  # Each -v adds 1 to verbosity.
