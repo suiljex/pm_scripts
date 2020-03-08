@@ -231,7 +231,7 @@ save_project()
   
   TARNAME="${PROJNAME}_$(eval ${TIMESTAMP})"
   ${MD} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"
-  tar cfz "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.gz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
+  tar cfJ "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.xz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
   ${RM} "${TEMPDIR}"
 }
 
