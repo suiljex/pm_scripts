@@ -1,11 +1,11 @@
-#!/bin/bash
+#/usr/bin/env bash
 
 PMEXECUTABLE="$(realpath $0)"
 PMROOTDIR="$(realpath $(dirname $0))"
 PMDBDIR=".pm_db"
 PROJINFO="projects.info"
 DBID="db.id"
-PMCS="pm_clean.sh"
+PMCS="pm_clean.bash"
 
 MD="mkdir --parents"
 CF="touch"
