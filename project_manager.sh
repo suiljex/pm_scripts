@@ -164,6 +164,35 @@ del_project()
   ${RM} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"
 }
 
+show_project()
+{
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Показ содержимого хранилища проекта:" $1
+  fi
+  
+  PROJNAME=$1
+
+  LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
+  if [ "${LINENUM}" == "" ]
+  then
+    report_message "ERROR: Проекта с таким именем не существует!"
+    return 1
+  fi
+  
+  PROJLOCATION="$(sed --quiet --expression="${LINENUM}p" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | cut --delimiter=':' --fields=2)"
+  PROJLOCATION="${PMROOTDIR}/${PROJLOCATION}"
+  
+  printf "%s\n" "Проект: ${PROJNAME}"
+  printf "%s\n" "Путь:   ${PROJLOCATION}"
+  
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    printf "%s\n" "Содержимое:"
+    ls -lah "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}" | awk '{print $9, $5}' | column -t
+  fi
+}
+
 save_project()
 {
   if [ ${VERBOSE} -ge 1 ]
@@ -347,6 +376,8 @@ show_help()
   printf "\t$0 --load-all\n"
   printf "\t$0 --export-db\n"
   printf "\t$0 --import-db\n"
+  printf "\t$0 --show -n <название проекта>\n"
+  printf "\t$0 --show-all\n"
   printf "\t\t--init - Инициализация хранилища\n"
   printf "\t\t-a, --add - Добавить проект в хранилище\n"
   printf "\t\t-d, --delete - Удалить проект из хранилища\n"
@@ -361,6 +392,8 @@ show_help()
   printf "\t\t--load-all - Развернуть последние версии проектов из хранилища\n"
   printf "\t\t--export-db - Экспортировать хранилище\n"
   printf "\t\t--import-db - Импортировать хранилище\n"
+  printf "\t\t--show - Показать содержимое проекта в хранилище\n"
+  printf "\t\t--show-all - Показать содержимое проектов в хранилище\n"
 }
 
 print_debug()
@@ -522,6 +555,24 @@ parse_command()
           return 1
         fi
         ;;
+      --show)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="show"
+        else
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
+        fi
+        ;;
+      --show-all)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="show-all"
+        else
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
+        fi
+        ;;
       -y|--yes)       # Takes an option argument;
         YES=1
         ;;
@@ -638,6 +689,24 @@ execute_comand()
       
       import_db ${LOCATION}
       return $?
+      ;;
+    show)
+      if [ "${ALIAS}" == "" ]
+      then
+        report_message "ERROR: Не указано название проекта"
+        return 1
+      fi
+      
+      show_project ${ALIAS}
+      return $?
+      ;;
+    show-all)
+      PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
+      for PNAME in ${PROJECTNAMES}
+      do
+        show_project ${PNAME}
+      done
+      return 0
       ;;
     *)
       report_message "ERROR: Не указана команда"
