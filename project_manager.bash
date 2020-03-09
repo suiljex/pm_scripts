@@ -48,7 +48,7 @@ report_message()
 
 check_name()
 {
-  cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -w "$1"
+  cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -w "$1" 1> ${VOID} 2> ${VOID}
   RESULT=$?
   if [ ${RESULT} -eq 0 ]
   then
@@ -60,7 +60,7 @@ check_name()
 
 check_path()
 {
-  cut --delimiter=':' --fields=2 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -w "$1"
+  cut --delimiter=':' --fields=2 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -w "$1" 1> ${VOID} 2> ${VOID}
   RESULT=$?
   if [ ${RESULT} -eq 0 ]
   then
@@ -204,6 +204,13 @@ change_name()
   PROJNAME=$1
   NEWNAME=$2
   
+  LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
+  if [ "${LINENUM}" == "" ]
+  then
+    report_message "ERROR: Проекта с таким именем не существует!"
+    return 1
+  fi
+  
   check_name "${NEWNAME}"
   RESULT=$?
   if [ ${RESULT} -eq 1 ]
@@ -213,7 +220,7 @@ change_name()
   fi
   
   ESCAPEDPROJNAME=$(echo "${PROJNAME}" | sed --expression='s/[]\/$*.^[]/\\&/g')
-  sed --in-place --expression="s/^${ESCAPEDPROJNAME}/${NEWNAME}/g" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
+  sed --in-place --expression="s/^${ESCAPEDPROJNAME}:/${NEWNAME}:/g" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
   
   for FNAME in "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${PROJNAME}"_*
   do 
@@ -548,6 +555,7 @@ print_debug()
   echo "skip-similar:" "${SKIPSIMILAR}"
   echo "alias:       " "${ALIAS}"
   echo "path:        " "${LOCATION}"
+  echo "newname:     " "${NEWNAME}"
   echo "COMMAND:     " "${COMMAND}"
 }
 
