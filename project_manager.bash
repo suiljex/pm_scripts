@@ -12,6 +12,7 @@ CF="touch"
 RM="rm --recursive --force"
 CP="cp --recursive --preserve=mode,ownership,timestamps"
 MV="mv"
+CD="cd"
 MERGE="rsync --archive --ignore-existing"
 VOID="/dev/null"
 GEN32CHAR="cat /dev/urandom | tr -cd 'a-z0-9' | head -c 32"
@@ -133,6 +134,11 @@ init_pm_db()
   NEWID=$(eval ${GEN32CHAR})
   echo ${NEWID} > "${PMROOTDIR}/${PMDBDIR}/${DBID}"
   ${CF} "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
+  
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Инициализировано хранилище ${NEWID}"
+  fi
 }
 
 add_project()
@@ -186,6 +192,36 @@ del_project()
   
   sed --in-place --expression="${LINENUM}d" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
   ${RM} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"
+}
+
+change_name()
+{
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Изменение названия проекта:" $1 "на" $2
+  fi
+  
+  PROJNAME=$1
+  NEWNAME=$2
+  
+  check_name "${NEWNAME}"
+  RESULT=$?
+  if [ ${RESULT} -eq 1 ]
+  then
+    report_message "ERROR: Проект с таким именем уже существует!"
+    return 1
+  fi
+  
+  ESCAPEDPROJNAME=$(echo "${PROJNAME}" | sed --expression='s/[]\/$*.^[]/\\&/g')
+  sed --in-place --expression="s/^${ESCAPEDPROJNAME}/${NEWNAME}/g" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
+  
+  for FNAME in "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${PROJNAME}"_*
+  do 
+    TEMPNAME="$(basename "${FNAME}")"
+    ${MV} "${FNAME}" "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${NEWNAME}${TEMPNAME#${PROJNAME}}"
+  done
+  
+  ${MV} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}" "${PMROOTDIR}/${PMDBDIR}/${NEWNAME}"
 }
 
 show_project()
@@ -365,7 +401,7 @@ import_db()
 {
   if [ ${VERBOSE} -ge 1 ]
   then
-    echo "Импорт хранилища."
+    echo "Импорт хранилища" $1
   fi
   
   TARNAME=$1
@@ -382,10 +418,10 @@ import_db()
   
   IDIMPORT=$(cat "${TEMPDIR}/${PMDBDIR}/${DBID}")
   ${RM} "${TEMPDIR}"
-  printf "Импортируется хранилище              ${IDIMPORT}\n"
   if [ -f "${PMROOTDIR}/${PMDBDIR}/${DBID}" ]
   then
     IDCUR=$(cat "${PMROOTDIR}/${PMDBDIR}/${DBID}")
+    report_message "WARN: Импортируется хранилище        ${IDIMPORT}"
     report_message "WARN: Уже имеется активное хранилище ${IDCUR}"
     confirm_choice "WARN: Заменить текущее хранилище импортируемым?"
     RESULT=$?
@@ -399,13 +435,18 @@ import_db()
   fi
   
   tar xf "${TARNAME}" --directory "${PMROOTDIR}"
+  
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Импортировано хранилище ${IDIMPORT}"
+  fi
 }
 
 merge_db()
 {
   if [ ${VERBOSE} -ge 1 ]
   then
-    echo "Слияние хранилища."
+    echo "Слияние хранилища" $1
   fi
   
   TARNAME=$1
@@ -423,9 +464,9 @@ merge_db()
   IDMERGE=$(cat "${TEMPDIR}/${PMDBDIR}/${DBID}")
   IDCUR=$(cat "${PMROOTDIR}/${PMDBDIR}/${DBID}")
   
-  printf "Сливаемые хранилища:\n"             
-  printf "${IDMERGE}\n"
-  printf "${IDCUR}\n"
+  printf "Сливаемые хранилища:\n"        
+  printf "Текущее ${IDCUR}\n"
+  printf "Новое   ${IDMERGE}\n"
   
   check_merge_conflicts "${TEMPDIR}/${PMDBDIR}/${PROJINFO}" "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}"
   RESULT=$?
@@ -471,6 +512,7 @@ show_help()
   printf "\t$0 --merge-db -p <путь к проекту>\n"
   printf "\t$0 --show -n <название проекта>\n"
   printf "\t$0 --show-all\n"
+  printf "\t$0 --rename <новое название проекта> -n <старое название проекта>\n"
   printf "\t\t--init - Инициализация хранилища\n"
   printf "\t\t-a, --add - Добавить проект в хранилище\n"
   printf "\t\t-d, --delete - Удалить проект из хранилища\n"
@@ -489,6 +531,7 @@ show_help()
   printf "\t\t--merge-db - Слить хранилище\n"
   printf "\t\t--show - Показать содержимое проекта в хранилище\n"
   printf "\t\t--show-all - Показать содержимое проектов в хранилище\n"
+  printf "\t\t--rename - Изменить название проекта в хранилище\n"
 }
 
 print_debug()
@@ -519,6 +562,7 @@ parse_command()
   LOCATION=""
   ALIAS=""
   COMMAND=""
+  NEWNAME=""
   YES=0
   VERBOSE=0
   SKIPPMCS=0
@@ -588,6 +632,24 @@ parse_command()
           report_message "ERROR: Разрешено только одно действие за раз!"
           return 1
         fi
+        ;;
+      --rename)       # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+          NEWNAME=$2
+          COMMAND="rename"
+          shift
+        else
+          report_message "ERROR: \"--rename\" requires a non-empty option argument."
+          return 1
+        fi
+        ;;
+      --rename=?*)
+        NEWNAME=${1#*=} # Delete everything up to "=" and assign the remainder.
+        COMMAND="rename"
+        ;;
+      --rename=)         # Handle the case of an empty --file=
+        report_message "ERROR: \"--rename\" requires a non-empty option argument."
+        return 1
         ;;
       -s|--save)       # Takes an option argument;
         if [ "${COMMAND}" == "" ]
@@ -738,6 +800,16 @@ execute_comand()
       fi
       
       del_project "${ALIAS}"
+      return $?
+      ;;
+    rename)
+      if [ "${ALIAS}" == "" ] || [ "${NEWNAME}" == "" ]
+      then
+        report_message "ERROR: Не указано название проекта"
+        return 1
+      fi
+      
+      change_name "${ALIAS}" "${NEWNAME}"
       return $?
       ;;
     save)
