@@ -545,6 +545,11 @@ purge_similar()
     read cksm _ < <(md5sum "${PROGFILE}")
     if ((arr[${cksm}]++))
     then 
+      if [ ${VERBOSE} -ge 2 ]
+      then
+        echo "Удаление:" ${PROGFILE}
+      fi
+      
       ${RM} ${PROGFILE}
     fi
   done
