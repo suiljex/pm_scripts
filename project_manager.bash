@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #Скрипт для управления проектами
-#При инициализации создается дириктория .pm_db в дириутории со скриптом.
+#При инициализации создается директория .pm_db в директории со скриптом.
 #В .pm_db/db.id хранится уникальный идентификатор хранилища проектов
 #В .pm_db/projects.info хранятся сопоставления местоположения проектов с их репозиторями в хранилише
 #Формат .pm_db/projects.info:
@@ -24,6 +24,8 @@ RM="rm --recursive --force"
 CP="cp --recursive --preserve=mode,ownership,timestamps"
 MV="mv"
 CD="cd"
+TAR="tar cfJ"
+UTAR="tar xfJ"
 MERGE="rsync --archive --ignore-existing"
 VOID="/dev/null"
 GEN32CHAR="cat /dev/urandom | tr -cd 'a-z0-9' | head -c 32"
@@ -314,7 +316,7 @@ save_project()
   
   TARNAME="${PROJNAME}_$(eval ${TIMESTAMP})"
   ${MD} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"
-  tar cfJ "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.xz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
+  ${TAR} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.xz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
   ${RM} "${TEMPDIR}"
 
   if [ ${SKIPSIMILAR} -eq 1 ] && [ -f "${LASTCOPY}" ]
@@ -374,7 +376,7 @@ load_project()
   
   TEMPDIR="/tmp/${PROJNAME}_$(eval ${GEN32CHAR})"
   ${MD} "${TEMPDIR}"
-  tar xfz "${LASTCOPY}" --directory "${TEMPDIR}"
+  ${UTAR} "${LASTCOPY}" --directory "${TEMPDIR}"
   ${MV} "${TEMPDIR}/$(basename "${PROJLOCATION}")" "$(dirname "${PROJLOCATION}")"
   ${RM} "${TEMPDIR}"
 }
