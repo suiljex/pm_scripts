@@ -24,8 +24,10 @@ RM="rm --recursive --force"
 CP="cp --recursive --preserve=mode,ownership,timestamps"
 MV="mv"
 CD="cd"
-TAR="tar cfJ"
-UTAR="tar xfJ"
+TAR="tar cf"
+UTAR="tar xf"
+TARZ="tar cfJ"
+UTARZ="tar xfJ"
 MERGE="rsync --archive --ignore-existing"
 VOID="/dev/null"
 GEN32CHAR="cat /dev/urandom | tr -cd 'a-z0-9' | head -c 32"
@@ -316,7 +318,7 @@ save_project()
   
   TARNAME="${PROJNAME}_$(eval ${TIMESTAMP})"
   ${MD} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"
-  ${TAR} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.xz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
+  ${TARZ} "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}/${TARNAME}.tar.xz" --directory "${TEMPDIR}" "$(basename "${PROJLOCATION}")"
   ${RM} "${TEMPDIR}"
 
   if [ ${SKIPSIMILAR} -eq 1 ] && [ -f "${LASTCOPY}" ]
@@ -376,7 +378,7 @@ load_project()
   
   TEMPDIR="/tmp/${PROJNAME}_$(eval ${GEN32CHAR})"
   ${MD} "${TEMPDIR}"
-  ${UTAR} "${LASTCOPY}" --directory "${TEMPDIR}"
+  ${UTARZ} "${LASTCOPY}" --directory "${TEMPDIR}"
   ${MV} "${TEMPDIR}/$(basename "${PROJLOCATION}")" "$(dirname "${PROJLOCATION}")"
   ${RM} "${TEMPDIR}"
 }
@@ -414,7 +416,7 @@ export_db()
   fi
   
   TARNAME="projectmanagerdb_$(eval ${TIMESTAMP})"
-  tar cf "${TARNAME}.tar" --directory "${PMROOTDIR}" "$(basename "${PMROOTDIR}/${PMDBDIR}")"
+  ${TAR} "${TARNAME}.tar" --directory "${PMROOTDIR}" "$(basename "${PMROOTDIR}/${PMDBDIR}")"
 }
 
 import_db()
@@ -427,7 +429,7 @@ import_db()
   TARNAME=$1
   TEMPDIR="/tmp/${PMROOTDIR}_$(eval ${GEN32CHAR})"
   ${MD} "${TEMPDIR}"
-  tar xf "${TARNAME}" --directory "${TEMPDIR}" "${PMDBDIR}/${DBID}" 2> ${VOID}
+  ${UTAR} "${TARNAME}" --directory "${TEMPDIR}" "${PMDBDIR}/${DBID}" 2> ${VOID}
   RESULT=$?
   if [ ${RESULT} -ne 0 ]
   then
