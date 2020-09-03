@@ -512,25 +512,65 @@ merge_db()
   ${RM} "${TEMPDIR}"
 }
 
+purge_similar()
+{
+  if [ ${VERBOSE} -ge 1 ]
+  then
+    echo "Удаление дубликатов проекта:" $1
+  fi
+  
+  PROJNAME=$1
+  
+  LINENUM=$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | grep -wn "${PROJNAME}" | cut --delimiter=':' --fields=1 | head --lines=1)
+  if [ "${LINENUM}" == "" ]
+  then
+    report_message "ERROR: Проекта с таким именем не существует!"
+    return 1
+  fi
+  
+  confirm_choice "WARN: Подтвердить удаление?"
+  RESULT=$?
+  if [ ${RESULT} -ne 0 ]
+  then
+    report_message "WARN: Отмена! Дубликаты не были удалены."
+    return 1
+  fi
+
+  declare -A arr
+  shopt -s globstar
+
+  for PROGFILE in "${PMROOTDIR}/${PMDBDIR}/${PROJNAME}"/*
+  do
+    [[ -f "${PROGFILE}" ]] || continue
+    read cksm _ < <(md5sum "${PROGFILE}")
+    if ((arr[${cksm}]++))
+    then 
+      ${RM} ${PROGFILE}
+    fi
+  done
+}
+
 show_help()
 {
   printf "Менежджер проектов $0\n"
   printf "Использование:\n"
-  printf "\t$0 [-h]\n"
-  printf "\t$0 --init\n"
-  printf "\t$0 -a -p <путь к проекту> [-n <название проекта>]\n"
-  printf "\t$0 -d -n <название проекта>\n"
-  printf "\t$0 -s -n <название проекта> [--skip-clear] [--skip-similar]\n"
-  printf "\t$0 -l -n <название проекта>\n"
-  printf "\t$0 -e -n <название проекта>\n"
-  printf "\t$0 --save-all [--skip-clear] [--skip-similar]\n"
-  printf "\t$0 --load-all\n"
-  printf "\t$0 --export-db\n"
-  printf "\t$0 --import-db -p <путь к хранилищу>\n"
-  printf "\t$0 --merge-db -p <путь к хранилищу>\n"
+  printf "\t$0 [-h] [-v]\n"
+  printf "\t$0 --init [-v]\n"
+  printf "\t$0 -a -p <путь к проекту> [-n <название проекта>] [-v]\n"
+  printf "\t$0 -d -n <название проекта> [-v]\n"
+  printf "\t$0 -s -n <название проекта> [--skip-clear] [--skip-similar] [-v]\n"
+  printf "\t$0 -l -n <название проекта> [-v]\n"
+  printf "\t$0 -e -n <название проекта> [-v]\n"
+  printf "\t$0 --save-all [--skip-clear] [--skip-similar] [-v]\n"
+  printf "\t$0 --load-all [-v]\n"
+  printf "\t$0 --export-db [-v]\n"
+  printf "\t$0 --import-db -p <путь к хранилищу> [-v]\n"
+  printf "\t$0 --merge-db -p <путь к хранилищу> [-v]\n"
   printf "\t$0 --show -n <название проекта> [-v]\n"
-  printf "\t$0 --show-all\n"
-  printf "\t$0 --rename <новое название проекта> -n <старое название проекта>\n"
+  printf "\t$0 --show-all [-v]\n"
+  printf "\t$0 --rename <новое название проекта> -n <старое название проекта> [-v]\n"
+  printf "\t$0 --purge-similar -n <название проекта> [-v]\n"
+  printf "\t$0 --purge-similar-all [-v]\n"
   printf "\t\t--init - Инициализация хранилища\n"
   printf "\t\t-a, --add - Добавить проект в хранилище\n"
   printf "\t\t-d, --delete - Удалить проект из хранилища\n"
@@ -550,6 +590,8 @@ show_help()
   printf "\t\t--show - Показать содержимое проекта в хранилище\n"
   printf "\t\t--show-all - Показать содержимое проектов в хранилище\n"
   printf "\t\t--rename - Изменить название проекта в хранилище\n"
+  printf "\t\t--purge-similar - Удалить дубликаты проекта\n"
+  printf "\t\t--purge-similar-all - Удалить дубликаты всех проектов\n"
   printf "\t\t-v, --verbose - Общительный режим\n"
 }
 
@@ -689,6 +731,15 @@ parse_command()
           return 1
         fi
         ;;
+      --purge-similar)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="purge-similar"
+        else
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
+        fi
+        ;;
       --save-all)       # Takes an option argument;
         if [ "${COMMAND}" == "" ]
         then
@@ -702,6 +753,15 @@ parse_command()
         if [ "${COMMAND}" == "" ]
         then
           COMMAND="load-all"
+        else
+          report_message "ERROR: Разрешено только одно действие за раз!"
+          return 1
+        fi
+        ;;
+      --purge-similar-all)       # Takes an option argument;
+        if [ "${COMMAND}" == "" ]
+        then
+          COMMAND="purge-similar-all"
         else
           report_message "ERROR: Разрешено только одно действие за раз!"
           return 1
@@ -852,6 +912,16 @@ execute_comand()
       load_project "${ALIAS}"
       return $?
       ;;
+    purge-similar)
+      if [ "${ALIAS}" == "" ]
+      then
+        report_message "ERROR: Не указано название проекта"
+        return 1
+      fi
+      
+      purge_similar "${ALIAS}"
+      return $?
+      ;;
     save-all)
       PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
       for PNAME in ${PROJECTNAMES}
@@ -865,6 +935,14 @@ execute_comand()
       for PNAME in ${PROJECTNAMES}
       do
         load_project "${PNAME}"
+      done
+      return 0
+      ;;
+    purge-similar-all)
+      PROJECTNAMES="$(cut --delimiter=':' --fields=1 "${PMROOTDIR}/${PMDBDIR}/${PROJINFO}" | sort)"
+      for PNAME in ${PROJECTNAMES}
+      do
+        purge_similar "${PNAME}"
       done
       return 0
       ;;
